@@ -1,5 +1,5 @@
 # Start from Alpine base image
-FROM alpine
+FROM alpine:3.21
 LABEL maintainer="Mr.Philipp <d3vilh@github.com>"
 LABEL version="0.5.5"
 
@@ -22,7 +22,7 @@ RUN mkdir -p /opt/app/clients \
     /opt/app/config
 
 # Add the openssl-easyrsa.cnf file to the easy-rsa directory
-ADD openssl-easyrsa.cnf /opt/app/easy-rsa/
+COPY openssl-easyrsa.cnf /opt/app/easy-rsa/
 
 # Make all files in the bin directory executable
 RUN chmod +x bin/*; chmod +x docker-entrypoint.sh
@@ -32,4 +32,4 @@ EXPOSE 1194/udp
 
 # Set the entrypoint to the docker-entrypoint.sh script, passing in the following arguments:
 # $REQ_COUNTRY $REQ_PROVINCE $REQ_CITY $REQ_ORG $REQ_OU $REQ_CN
-ENTRYPOINT ./docker-entrypoint.sh
+ENTRYPOINT ["/opt/app/docker-entrypoint.sh"]

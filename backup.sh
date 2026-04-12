@@ -21,28 +21,28 @@ if [[ $ACTION == "-b" ]]; then
         # Perform backup action
         echo -e "\033[1;32mPerforming backup\033[0m"
         echo -e " Backup OpenVPN Server Environment from \"$SERVER_ENV\" to \"$BACKUP_DIR\""
-        mkdir -p $BACKUP_DIR
+        mkdir -p "$BACKUP_DIR"
 
         # Backup files
-        cp -Rp $SERVER_ENV/config $BACKUP_DIR
+        cp -Rp "$SERVER_ENV/config" "$BACKUP_DIR"
         echo " OpenVPN config backed up"
-        cp -Rp $SERVER_ENV/db $BACKUP_DIR
+        cp -Rp "$SERVER_ENV/db" "$BACKUP_DIR"
         if [ ! -f "$BACKUP_DIR/db/data.db" ]; then
             echo " You pronbably have old version of OpenVPN-UI, backing up your DB with docker cp"
-            mkdir -p $BACKUP_DIR/db; mkdir -p $SERVER_ENV/db;
-            sudo docker cp openvpn-ui:/opt/openvpn-gui/data.db $BACKUP_DIR/db/data.db
-            sudo cp -p $BACKUP_DIR/db/data.db $SERVER_ENV/db/data.db
+            mkdir -p "$BACKUP_DIR/db"; mkdir -p "$SERVER_ENV/db";
+            sudo docker cp openvpn-ui:/opt/openvpn-gui/data.db "$BACKUP_DIR/db/data.db"
+            sudo cp -p "$BACKUP_DIR/db/data.db" "$SERVER_ENV/db/data.db"
         fi
         echo " OpenVPN-UI db backed up"
-        cp -Rp $SERVER_ENV/pki $BACKUP_DIR
+        cp -Rp "$SERVER_ENV/pki" "$BACKUP_DIR"
         echo " OpenVPN pki backed up"
-        cp -Rp $SERVER_ENV/staticclients $BACKUP_DIR
+        cp -Rp "$SERVER_ENV/staticclients" "$BACKUP_DIR"
         echo " OpenVPN staticclients backed up"
-        cp -Rp $SERVER_ENV/clients $BACKUP_DIR
+        cp -Rp "$SERVER_ENV/clients" "$BACKUP_DIR"
         echo " OpenVPN clients backed up"
-        cp -Rp $SERVER_ENV/fw-rules.sh $BACKUP_DIR/fw-rules.sh
+        cp -Rp "$SERVER_ENV/fw-rules.sh" "$BACKUP_DIR/fw-rules.sh"
         echo " OpenVPN fw-rules.sh backed up"
-        cp -Rp $SERVER_ENV/docker-compose.yml $BACKUP_DIR/docker-compose.yml
+        cp -Rp "$SERVER_ENV/docker-compose.yml" "$BACKUP_DIR/docker-compose.yml"
         echo " OpenVPN docker-compose.yml backed up"
 
         echo -e "\033[1;32mBackup created at $BACKUP_DIR\033[0m"
@@ -57,19 +57,19 @@ elif [[ $ACTION == "-r" ]]; then
     if [[ $REPLY =~ ^[Yy]$ ]]; then
         # Perform restore action
         echo -e "\033[1;34mPerforming Restore \033[0m"
-        rm -rf $SERVER_ENV/config; cp -Rp $BACKUP_DIR/config $SERVER_ENV
+        rm -rf "$SERVER_ENV/config"; cp -Rp "$BACKUP_DIR/config" "$SERVER_ENV"
         echo " OpenVPN config restored"
-        rm -rf $SERVER_ENV/db; cp -Rp $BACKUP_DIR/db $SERVER_ENV
+        rm -rf "$SERVER_ENV/db"; cp -Rp "$BACKUP_DIR/db" "$SERVER_ENV"
         echo " OpenVPN-UI db restored"
-        rm -rf $SERVER_ENV/pki; cp -Rp $BACKUP_DIR/pki $SERVER_ENV
+        rm -rf "$SERVER_ENV/pki"; cp -Rp "$BACKUP_DIR/pki" "$SERVER_ENV"
         echo " OpenVPN pki restored"
-        rm -rf $SERVER_ENV/staticclients; cp -Rp $BACKUP_DIR/staticclients $SERVER_ENV
+        rm -rf "$SERVER_ENV/staticclients"; cp -Rp "$BACKUP_DIR/staticclients" "$SERVER_ENV"
         echo " OpenVPN staticclients restored"
-        rm -rf $SERVER_ENV/clients; cp -Rp $BACKUP_DIR/clients $SERVER_ENV
+        rm -rf "$SERVER_ENV/clients"; cp -Rp "$BACKUP_DIR/clients" "$SERVER_ENV"
         echo " OpenVPN clients restored"
-        rm -rf $SERVER_ENV/fw-rules.sh; cp -Rp $BACKUP_DIR/fw-rules.sh $SERVER_ENV/fw-rules.sh
+        rm -rf "$SERVER_ENV/fw-rules.sh"; cp -Rp "$BACKUP_DIR/fw-rules.sh" "$SERVER_ENV/fw-rules.sh"
         echo " OpenVPN fw-rules.sh restored"
-        rm -rf $SERVER_ENV/docker-compose.yml; cp -Rp $BACKUP_DIR/docker-compose.yml $SERVER_ENV/docker-compose.yml
+        rm -rf "$SERVER_ENV/docker-compose.yml"; cp -Rp "$BACKUP_DIR/docker-compose.yml" "$SERVER_ENV/docker-compose.yml"
         echo " OpenVPN docker-compose.yml restored"
         echo -e "\033[1;34mRestore Completed!\033[0m"
     else

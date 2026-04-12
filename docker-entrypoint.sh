@@ -22,7 +22,7 @@ if [[ ! -f $OPENVPN_DIR/pki/ca.crt ]]; then
     echo "Following EASYRSA variables will be used:"
     cat $EASY_RSA/pki/vars | awk '{$1=""; print $0}';
 
-    echo 'Generating ertificate authority...'
+    echo 'Generating certificate authority...'
     $EASY_RSA/easyrsa build-ca nopass
 
     # Creating the Server Certificate, Key, and Encryption Files
@@ -36,7 +36,7 @@ if [[ ! -f $OPENVPN_DIR/pki/ca.crt ]]; then
     $EASY_RSA/easyrsa gen-dh
 
     echo 'Generate HMAC signature...'
-    openvpn --genkey --secret $EASY_RSA/pki/ta.key
+    openvpn --genkey tls-auth $EASY_RSA/pki/ta.key
 
     echo 'Create certificate revocation list (CRL)...'
     $EASY_RSA/easyrsa gen-crl
@@ -74,8 +74,8 @@ iptables -t nat -A POSTROUTING -s $TRUST_SUB -o eth0 -j MASQUERADE
 iptables -t nat -A POSTROUTING -s $GUEST_SUB -o eth0 -j MASQUERADE
 
 echo 'Blocking ICMP for external clients'
-iptables -A FORWARD -p icmp -j DROP --icmp-type echo-request -s $GUEST_SUB 
-iptables -A FORWARD -p icmp -j DROP --icmp-type echo-reply -s $GUEST_SUB 
+iptables -A FORWARD -p icmp -m icmp --icmp-type echo-request -s $GUEST_SUB -j DROP
+iptables -A FORWARD -p icmp -m icmp --icmp-type echo-reply -s $GUEST_SUB -j DROP
 
 echo 'Blocking internal home subnet to access from external openvpn clients (Internet still available)'
 iptables -A FORWARD -s $GUEST_SUB -d $HOME_SUB -j DROP
