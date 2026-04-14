@@ -1,5 +1,14 @@
 # Changelog
 
+## [v0.6.1]
+
+- **CRLF-Zeilenenden in Shell-Scripts behoben** (`Dockerfile`, `.gitattributes`)
+  Auf Windows gespeicherte Scripts enthielten `\r\n`-Zeilenenden. Linux konnte den Shebang `#!/bin/bash\r` nicht interpretieren, was zu `exec /opt/app/docker-entrypoint.sh: no such file or directory` führte.
+  - `sed -i 's/\r$//'` im Dockerfile entfernt `\r` beim Build aus allen Scripts
+  - `.gitattributes` hinzugefügt: erzwingt LF-Zeilenenden für `.sh`, `.conf`, `.vars`, `.cnf` und `Dockerfile`
+
+---
+
 ## [v0.6]
 
 ### Sicherheit

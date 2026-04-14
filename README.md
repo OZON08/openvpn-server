@@ -1,4 +1,5 @@
 # ozon08/openvpn-server
+
 Fast Docker container with OpenVPN Server living inside.
 
 > **Fork notice:** This repository is a fork of [d3vilh/openvpn-server](https://github.com/d3vilh/openvpn-server) by Mr. Philipp.
@@ -7,9 +8,14 @@ Fast Docker container with OpenVPN Server living inside.
 
 [![latest version](https://img.shields.io/github/v/release/ozon08/openvpn-server?color=%2344cc11&label=LATEST%20RELEASE&style=flat-square&logo=Github)](https://github.com/ozon08/openvpn-server/releases/latest)  [![Docker Image Version (tag latest semver)](https://img.shields.io/docker/v/ozon08/openvpn-server/latest?style=flat-square&logo=docker&logoColor=white&label=DOCKER%20IMAGE&color=2344cc11)](https://hub.docker.com/r/ozon08/openvpn-server) ![Docker Image Size (tag)](https://img.shields.io/docker/image-size/ozon08/openvpn-server/latest?logo=Docker&color=2344cc11&label=IMAGE%20SIZE&style=flat-square&logoColor=white)
 
-[![latest version](https://img.shields.io/github/v/release/ozon08/openvpn-ui?color=%2344cc11&label=OpenVPN%20UI&style=flat-square&logo=Github)](https://github.com/ozon08/openvpn-ui) [![Docker Image Version (tag latest semver)](https://img.shields.io/docker/v/ozon08/openvpn-ui/latest?logo=docker&label=OpenVPN%20UI%20IMAGE&color=2344cc11&style=flat-square&logoColor=white)](https://hub.docker.com/r/ozon08/openvpn-ui) 
+[![latest version](https://img.shields.io/github/v/release/ozon08/openvpn-ui?color=%2344cc11&label=OpenVPN%20UI&style=flat-square&logo=Github)](https://github.com/ozon08/openvpn-ui) [![Docker Image Version (tag latest semver)](https://img.shields.io/docker/v/ozon08/openvpn-ui/latest?logo=docker&label=OpenVPN%20UI%20IMAGE&color=2344cc11&style=flat-square&logoColor=white)](https://hub.docker.com/r/ozon08/openvpn-ui)
 
 ## Important changes
+
+### Release `v0.6.1`
+
+* Fixed CRLF line endings in shell scripts causing `exec /opt/app/docker-entrypoint.sh: no such file or directory` on Linux
+* Added `.gitattributes` to enforce LF line endings for all scripts and config files
 
 ### Release `v0.6`
 
@@ -98,7 +104,8 @@ OPENVPN_ADMIN_PASSWORD=your-secure-password
 
 > **Important:** Change the default password before exposing the UI to any network.
 
-### Docker-compose.yml:
+### Docker-compose.yml
+
 ```yaml
 ---
 services:
@@ -169,6 +176,7 @@ services:
 * `checkpsw.sh` is a dummy bash script to use with `auth-user-pass-verify` option in `server.conf`. It is used to check user credentials against an external password DB, like LDAP, OATH, or MySQL. If you don't need this option, just leave it as is.
 
 `docker_entrypoint.sh` will apply the following firewall rules:
+
 ```shell
 IPT MASQ Chains:
 MASQUERADE  all  --  10.0.70.0/24  anywhere
@@ -180,6 +188,7 @@ IPT FWD Chains:
 ```
 
 Here is possible content of `fw-rules.sh` to apply additional rules:
+
 ```shell
 iptables -A FORWARD -s 10.0.70.88 -d 10.0.70.77 -j DROP
 iptables -A FORWARD -d 10.0.70.77 -s 10.0.70.88 -j DROP
@@ -400,6 +409,7 @@ To assign a subnet policy to a specific client, define a static IP address durin
 ### CLI ways to manage the OpenVPN Server
 
 **Generate** a new .OVPN profile (password is optional):
+
 ```shell
 sudo docker exec openvpn bash /opt/app/bin/genclient.sh <name> <IP> <?password?>
 ```
@@ -432,7 +442,7 @@ echo "ifconfig-push 10.0.71.2 255.255.255.0" > ~/openvpn/staticclients/Slava
 
 > By default all clients have full access, so you don't need to configure static IPs for your own devices.
 
-### Screenshots of managing OpenVPN Server with OpenVPN UI:
+### Screenshots of managing OpenVPN Server with OpenVPN UI
 
 <img src="https://github.com/ozon08/openvpn-ui/blob/main/docs/images/OpenVPN-UI-Login.png" alt="OpenVPN-UI Login screen" width="1000" border="1" />
 
