@@ -24,8 +24,9 @@ RUN mkdir -p /opt/app/clients \
 # Add the openssl-easyrsa.cnf file to the easy-rsa directory
 COPY openssl-easyrsa.cnf /opt/app/easy-rsa/
 
-# Make all files in the bin directory executable
-RUN chmod +x bin/*; chmod +x docker-entrypoint.sh
+# Strip Windows line endings and make all scripts executable
+RUN sed -i 's/\r$//' docker-entrypoint.sh bin/* && \
+    chmod +x docker-entrypoint.sh bin/*
 
 # Expose the OpenVPN port (1194/udp)
 EXPOSE 1194/udp
