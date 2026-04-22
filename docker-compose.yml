@@ -14,6 +14,12 @@ services:
             TRUST_SUB: "10.0.70.0/24"
             GUEST_SUB: "10.0.71.0/24"
             HOME_SUB: "192.168.88.0/24"
+            # openvpn-ui v0.9.7+ client-disconnect webhook. Uncomment both
+            # lines and set OPENVPN_UI_HOOK_TOKEN in .env to the same value
+            # as OPENVPN_UI_MONITORING_HOOK_TOKEN on the openvpn-ui service.
+            # Also uncomment the `client-disconnect` line in server.conf.
+            # OPENVPN_UI_URL: "http://openvpn-ui:8080"
+            # OPENVPN_UI_HOOK_TOKEN: "${OPENVPN_UI_HOOK_TOKEN:-}"
         volumes:
             - ./pki:/etc/openvpn/pki
             - ./clients:/etc/openvpn/clients

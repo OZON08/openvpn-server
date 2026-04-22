@@ -1,5 +1,20 @@
 # Changelog
 
+## [v0.6.2]
+
+### Neu
+
+- **`client-disconnect.sh`-Hook im Image gebündelt** (`bin/client-disconnect.sh`, `Dockerfile`)
+  Der Hook aus `openvpn-ui` v0.9.7 liegt jetzt fest im Image unter `/opt/app/bin/client-disconnect.sh` — kein Host-Mount mehr nötig. Das Skript postet bei jedem Disconnect die finalen Byte-Counter und Dauer an `openvpn-ui` (`/api/v1/monitor/disconnect`, authentifiziert via `X-Monitor-Token`). Aktivierung:
+  1. `client-disconnect /opt/app/bin/client-disconnect.sh` in `server.conf` einkommentieren (die Zeile ist bereits im Template vorbereitet).
+  2. Im openvpn-Container `OPENVPN_UI_URL=http://openvpn-ui:8080` und `OPENVPN_UI_HOOK_TOKEN=<token>` setzen — gleicher Wert wie `OPENVPN_UI_MONITORING_HOOK_TOKEN` beim openvpn-ui-Container.
+  `script-security 2` wird weiterhin vom Entrypoint automatisch gesetzt.
+
+- **Compose-Vorlage aktualisiert** (`docker-compose.yml`)
+  Auskommentierte `OPENVPN_UI_URL` / `OPENVPN_UI_HOOK_TOKEN` im `openvpn`-Service-Block mit Kurzanleitung.
+
+---
+
 ## [v0.6.1]
 
 - **CRLF-Zeilenenden in Shell-Scripts behoben** (`Dockerfile`, `.gitattributes`)
