@@ -15,8 +15,8 @@ if [[ ! -f $OPENVPN_DIR/pki/ca.crt ]]; then
     echo 'Setting up public key infrastructure...'
     $EASY_RSA/easyrsa init-pki
 
-    # Copy easy-rsa variables
-    cp $OPENVPN_DIR/config/easy-rsa.vars $EASY_RSA/pki/vars
+    # Copy easy-rsa variables (strip CRLF if file was edited on Windows)
+    sed 's/\r$//' $OPENVPN_DIR/config/easy-rsa.vars > $EASY_RSA/pki/vars
 
     # Listing env parameters:
     echo "Following EASYRSA variables will be used:"
