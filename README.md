@@ -12,6 +12,19 @@ Fast Docker container with OpenVPN Server living inside.
 
 ## Important changes
 
+### Release `v0.6.2`
+
+#### New
+
+* Bundled `bin/client-disconnect.sh` hook in the image for `openvpn-ui` v0.9.7+ session monitoring. Posts final byte counters and duration to `/api/v1/monitor/disconnect` via `X-Monitor-Token`. To enable, uncomment the `client-disconnect` line in `server.conf` and set `OPENVPN_UI_URL` / `OPENVPN_UI_HOOK_TOKEN` in the openvpn container environment.
+
+#### Fixes
+
+* EasyRSA failure on first start (`-noencys 3650` error) — `easy-rsa.vars` is volume-mounted, so CRLF is now stripped in `docker-entrypoint.sh` at copy time
+* Healthcheck was reporting `unhealthy` despite a running container — `CMD-SHELL` uses Alpine's `ash`, which does not support `/dev/tcp/`. Switched to explicit `bash -c`
+* `start_period` raised to `900s` to cover initial 4096-bit DH parameter generation on slow hardware
+* Removed deprecated `version` key from `docker-compose-no-ui.yml`
+
 ### Release `v0.6.1`
 
 * Fixed CRLF line endings in shell scripts causing `exec /opt/app/docker-entrypoint.sh: no such file or directory` on Linux

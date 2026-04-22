@@ -13,6 +13,17 @@
 - **Compose-Vorlage aktualisiert** (`docker-compose.yml`)
   Auskommentierte `OPENVPN_UI_URL` / `OPENVPN_UI_HOOK_TOKEN` im `openvpn`-Service-Block mit Kurzanleitung.
 
+### Fixes
+
+- **EasyRSA-Fehler beim ersten Start behoben** (`docker-entrypoint.sh`)
+  Die `easy-rsa.vars` wird per Volume vom Host gemountet, weshalb der Dockerfile-`sed`-Fix nicht griff. Mit CRLF-Zeilenenden lieferte EasyRSA zerbrochene openssl-Argumente wie `-noencys 3650`. Der Entrypoint stripped das `\r` jetzt beim Kopieren nach `pki/vars`.
+
+- **Healthcheck gefixt** (`docker-compose.yml`, `docker-compose-no-ui.yml`)
+  `CMD-SHELL` benutzt `/bin/sh` (in Alpine `ash`), welches die `/dev/tcp/`-Syntax nicht unterstützt. Umgestellt auf explizites `bash -c`, da `bash` bereits im Image installiert ist. Zusätzlich wurde `start_period` auf `900s` erhöht, um die initiale 4096-Bit DH-Parameter-Generierung (kann 5-15 Minuten dauern) abzudecken.
+
+- **`version`-Key aus `docker-compose-no-ui.yml` entfernt**
+  Wurde in v0.6 für `docker-compose.yml` entfernt, war aber hier noch vorhanden.
+
 ---
 
 ## [v0.6.1]

@@ -34,7 +34,7 @@ Admin credentials (`OPENVPN_ADMIN_USERNAME`, `OPENVPN_ADMIN_PASSWORD`) are store
 | `./log` | OpenVPN log files |
 | `./server.conf` | OpenVPN server configuration |
 
-## Security highlights (v0.6.1)
+## Security highlights (v0.6.2)
 
 - `tls-auth` enforced server-side — packets without valid HMAC are dropped
 - Management interface binds to `127.0.0.1` only
