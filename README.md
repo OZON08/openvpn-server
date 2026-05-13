@@ -12,6 +12,14 @@ Fast Docker container with OpenVPN Server living inside.
 
 ## Important changes
 
+### Release `v0.6.3`
+
+#### Security
+
+* `privileged: true` removed from the `openvpn` service in both Compose files — defense-in-depth against Linux kernel LPE bugs such as **[CVE-2026-31431 ("Copy Fail")](https://nvd.nist.gov/vuln/detail/CVE-2026-31431)**. The container now runs with `cap_add: NET_ADMIN`, a `/dev/net/tun` device mount and `net.ipv4.ip_forward` as a Compose sysctl. With privileged off, Docker's default seccomp/AppArmor profiles are active again and block the AF_ALG socket family used by the Copy Fail exploit.
+
+> **Note:** This change does *not* patch Copy Fail — it only reduces the impact of an exploit from inside the container. The actual fix is on the **host kernel** (apply your distro's kernel update from May 2026 or later, or blacklist the `algif_aead` module).
+
 ### Release `v0.6.2`
 
 #### New

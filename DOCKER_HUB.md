@@ -34,11 +34,12 @@ Admin credentials (`OPENVPN_ADMIN_USERNAME`, `OPENVPN_ADMIN_PASSWORD`) are store
 | `./log` | OpenVPN log files |
 | `./server.conf` | OpenVPN server configuration |
 
-## Security highlights (v0.6.2)
+## Security highlights (v0.6.3)
 
+- `privileged: true` removed from the openvpn container — Docker's default seccomp/AppArmor profiles are active, restricting dangerous syscalls (defense-in-depth vs. CVE-2026-31431 / Copy Fail and similar kernel LPEs)
 - `tls-auth` enforced server-side — packets without valid HMAC are dropped
 - Management interface binds to `127.0.0.1` only
-- No `privileged` mode for the UI container
+- No `privileged` mode for either container
 - RSA key size 4096 bit
 - TLS minimum version 1.3 for clients
 - Admin credentials stored in `.env`, excluded from Git

@@ -1,5 +1,19 @@
 # Changelog
 
+## [v0.6.3]
+
+### Sicherheit
+
+- **`privileged: true` aus `openvpn`-Service entfernt** (`docker-compose.yml`, `docker-compose-no-ui.yml`)
+  Defense-in-depth gegen Kernel-LPE-Lücken wie **CVE-2026-31431 ("Copy Fail")** im `algif_aead`-Modul (AF_ALG Crypto API). `privileged: true` deaktivierte Dockers Default-seccomp- und AppArmor-Profile, wodurch Container-Prozesse den verwundbaren AF_ALG-Socket auf einem ungepatchten Host-Kernel triggern und über den Bug Root auf dem Host erlangen konnten — inklusive Container-Escape. Die Container laufen jetzt mit minimalen Rechten:
+  - `cap_add: NET_ADMIN` (für `iptables` und `openvpn`-tun-Setup)
+  - `devices: /dev/net/tun:/dev/net/tun` (ersetzt `mknod` im Entrypoint — der `mknod`-Aufruf bleibt als No-op-Fallback bestehen)
+  - `sysctls: net.ipv4.ip_forward: "1"` (ersetzt das Schreiben in `/etc/sysctl.conf`; `sysctl -p` im Entrypoint bleibt kompatibel)
+
+  > **Wichtig:** Das ist *kein* Fix für CVE-2026-31431 — Copy Fail muss auf dem **Host-Kernel** gepatcht werden (Distro-Updates seit Anfang Mai 2026 verfügbar). Alternative Host-Mitigation: `algif_aead` blacklisten (`echo "blacklist algif_aead" > /etc/modprobe.d/copyfail.conf`). Die Compose-Änderung reduziert die Auswirkungen einer Ausnutzung *aus dem Container heraus*.
+
+---
+
 ## [v0.6.2]
 
 ### Neu
