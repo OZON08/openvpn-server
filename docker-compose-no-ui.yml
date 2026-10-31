@@ -38,7 +38,7 @@ services:
             timeout: 5s
             retries: 3
             # First start generates the PKI including 4096-bit DH parameters,
-            # which can take 5-15 minutes on slower hardware. Subsequent starts
+            # which can take over an hour on slow hardware. Subsequent starts
             # complete within seconds because PKI is persisted in the volume.
-            start_period: 900s
+            start_period: 7200s
 

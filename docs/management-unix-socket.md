@@ -15,7 +15,8 @@ Das Gegenstück liegt im Repo `openvpn-ui` unter `docs/management-unix-socket.md
 | `server.conf` | `management /etc/openvpn/run/mi.sock unix` |
 | `docker-entrypoint.sh` | Legt `run` mit Besitzer root, GID `61194` und Modus `0750` an und stellt alte Configs mit Port 2080 um |
 | `Dockerfile` | `LABEL version` auf `0.6.4` |
-| `docker-compose.yml`, `docker-compose-no-ui.yml` | Neues Volume `./run:/etc/openvpn/run`, Healthcheck prüft Socket und Prozess, Port-Eintrag entfernt |
+| `docker-entrypoint.sh` | Startet OpenVPN mit `exec` als PID 1. `openvpn.log` und `openvpn-status.log` erhalten vorab die Socket-Gruppe und Modus `0640`, damit die UI sie lesen kann |
+| `docker-compose.yml`, `docker-compose-no-ui.yml` | Neues Volume `./run:/etc/openvpn/run`, Healthcheck prüft Socket und Prozess, Port-Eintrag entfernt, `start_period` auf `7200s` |
 | `README.md`, `DOCKER_HUB.md` | Beispiele, Volumes und Sicherheitshinweise angepasst |
 | `.gitignore` | `run/` ergänzt |
 | `CHANGELOG.md` | Eintrag `v0.6.4` |
@@ -52,14 +53,18 @@ Der komplette Stack lief mit beiden echten Images, mit 2048-Bit-DH-Parametern un
 - Der Healthcheck besteht, wenn OpenVPN läuft.
 - Eine eigene GID über `.env` wirkt auf beiden Services.
 - Eine Config mit anderem TCP-Port erzeugt die Warnung im Log, ein alter Socket wird beim Start entfernt.
-- Eine Prüfung mit zuerst gestarteter UI lieferte einmal keine Version. In den übrigen kompletten Läufen und bei 10 weiteren Abrufen über 5 Neustarts in dieser Reihenfolge bestand sie, ohne Socket-Fehler im Log. Die Ursache des einzelnen Fehlschlags ist unbekannt.
+- Zwei einzelne Fehlschläge kamen sehr wahrscheinlich aus dem Test selbst: Er sah direkt nach dem Start noch den alten Socket. Seit er wartet, bis OpenVPN PID 1 ist, bestanden drei komplette Läufe mit je 20 Prüfungen.
+- Ein echter VPN-Client verbindet sich mit der `server.conf` aus dem Repo (`tls-auth`) und mit der von der UI gerenderten (`tls-crypt`), jeweils mit passendem Client. Der Ping durch den Tunnel geht durch, und die UI zeigt den Client über den Socket an.
+- `docker stop` dauert 2,3 Sekunden mit Exit-Code 0, der Client erhält die Reset-Meldung vom Server.
+- Die UI liest `openvpn-status.log` als `openvpn-ui`, `status.log parse failed` tritt nicht mehr auf.
 
 ## Nicht getestet
 
 - Die Neustart-Buttons, die `docker.sock` nutzen.
-- Eine echte VPN-Client-Verbindung.
 - Rootless Docker.
+- Ein erster Start mit 4096-Bit-DH-Parametern bis zum Ende. Auf dem Testrechner war er nach 44 Minuten bei hoher Last nicht fertig, deshalb ist `start_period` jetzt `7200s`. Ob das auf jeder Hardware reicht, ist offen.
 
 ## Offen
 
-Ein erster Start mit 4096-Bit-DH-Parametern kann auf langsamen Rechnern länger dauern als `start_period: 900s`. Der Server gilt dann als `unhealthy`, und `depends_on` verhindert den Start der UI. Das kommt nicht von dieser Änderung.
+1. `tls-auth` und `tls-crypt` passen nicht zusammen: Speichert die UI die OpenVPN-Config, steht in `server.conf` `tls-crypt`. `genclient.sh` schreibt in `.ovpn`-Dateien aber `<tls-auth>`. Ein solcher Client scheitert dann mit `tls-crypt unwrap error`. Das kommt nicht von dieser Änderung und betrifft `openvpn-ui`.
+2. `start.sh` von `openvpn-ui` setzt die Gruppe der Logs auf GID 1000 und gibt ihr Schreibrecht. Bis das eingegrenzt ist, kann ein Host-Benutzer mit dieser GID sie lesen und ändern.

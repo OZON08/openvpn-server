@@ -167,7 +167,7 @@ services:
            interval: 30s
            timeout: 5s
            retries: 3
-           start_period: 60s
+           start_period: 7200s
 
     openvpn-ui:
        container_name: openvpn-ui

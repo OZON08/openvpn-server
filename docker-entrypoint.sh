@@ -112,5 +112,13 @@ fi
 grep -qE "^[[:space:]]*management[[:space:]]+$MI_DIR/mi.sock[[:space:]]+unix" "$OPENVPN_DIR/server.conf" ||
     echo "WARNING: server.conf does not use $MI_DIR/mi.sock. The healthcheck and openvpn-ui need this socket."
 
+# OpenVPN keeps the mode of existing files and would create these as root-only
+mkdir -p /var/log/openvpn
+for MI_LOG in openvpn.log openvpn-status.log; do
+    touch "/var/log/openvpn/$MI_LOG"
+    chgrp "${OPENVPN_MI_GID:-61194}" "/var/log/openvpn/$MI_LOG"
+    chmod 640 "/var/log/openvpn/$MI_LOG"
+done
+
 echo 'Start openvpn process...'
-/usr/sbin/openvpn --cd $OPENVPN_DIR --script-security 2 --config $OPENVPN_DIR/server.conf
+exec /usr/sbin/openvpn --cd $OPENVPN_DIR --script-security 2 --config $OPENVPN_DIR/server.conf
