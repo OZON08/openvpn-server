@@ -1,5 +1,5 @@
 # Start from Alpine base image
-FROM alpine:3.21
+FROM alpine:3.24
 LABEL maintainer="OZON08 <65833863+OZON08@users.noreply.github.com>"
 LABEL version="0.6.4"
 
