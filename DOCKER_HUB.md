@@ -20,6 +20,7 @@ docker compose up -d
 | `TRUST_SUB` | Trusted subnet — full access to home network and internet (default: `10.0.70.0/24`) |
 | `GUEST_SUB` | Guest subnet — internet only, no access to home network (default: `10.0.71.0/24`) |
 | `HOME_SUB` | Your home/private subnet (default: `192.168.88.0/24`) |
+| `OPENVPN_MI_GID` | Group with access to the management socket, same value on both services (default: `61194`) |
 
 Admin credentials (`OPENVPN_ADMIN_USERNAME`, `OPENVPN_ADMIN_PASSWORD`) are stored in a `.env` file — never hardcoded in `docker-compose.yml`.
 
@@ -33,16 +34,24 @@ Admin credentials (`OPENVPN_ADMIN_USERNAME`, `OPENVPN_ADMIN_PASSWORD`) are store
 | `./staticclients` | Static IP assignments per client |
 | `./log` | OpenVPN log files |
 | `./server.conf` | OpenVPN server configuration |
+| `./run` | Management socket, shared with OpenVPN UI |
 
-## Security highlights (v0.6.3)
+## Security highlights (v0.6.4)
 
 - `privileged: true` removed from the openvpn container — Docker's default seccomp/AppArmor profiles are active, restricting dangerous syscalls (defense-in-depth vs. CVE-2026-31431 / Copy Fail and similar kernel LPEs)
 - `tls-auth` enforced server-side — packets without valid HMAC are dropped
-- Management interface binds to `127.0.0.1` only
+- Management interface uses a Unix socket in a restricted directory, no TCP port
 - No `privileged` mode for either container
 - RSA key size 4096 bit
 - TLS minimum version 1.3 for clients
 - Admin credentials stored in `.env`, excluded from Git
+
+## Image tags
+
+| Tag | Description |
+| --- | --- |
+| `latest`, `0.6.x` | Releases for amd64, arm64 and arm/v7, built from a Git tag |
+| `dev` | Current `main` branch for amd64, not for production |
 
 ## Ports
 

@@ -93,5 +93,32 @@ iptables -t nat -L | grep MASQ
 echo 'IPT FWD Chains:'
 iptables -v -x -n -L | grep DROP 
 
+# Management socket: its mode is 0777, so only this directory restricts access.
+# The group is shared with the openvpn-ui web process, which is not root.
+MI_DIR=$OPENVPN_DIR/run
+mkdir -p "$MI_DIR"
+chown 0:"${OPENVPN_MI_GID:-61194}" "$MI_DIR" # the host directory can belong to any user
+chmod 750 "$MI_DIR"
+rm -f "$MI_DIR/mi.sock" # a stale socket would pass the healthcheck without a listener
+# Move existing configs off the old TCP port, once the directory is shared with the UI
+MI_LEGACY='^management[[:space:]]+[^[:space:]]+[[:space:]]+2080([[:space:]].*)?$'
+if grep -q " $MI_DIR " /proc/mounts && grep -qE "$MI_LEGACY" "$OPENVPN_DIR/server.conf"; then
+    MI_TMP=$(mktemp)
+    sed -E "s|$MI_LEGACY|management $MI_DIR/mi.sock unix|" "$OPENVPN_DIR/server.conf" > "$MI_TMP"
+    cat "$MI_TMP" > "$OPENVPN_DIR/server.conf" # in place, server.conf can be a single-file mount
+    rm -f "$MI_TMP"
+    echo 'Management interface moved to Unix socket.'
+fi
+grep -qE "^[[:space:]]*management[[:space:]]+$MI_DIR/mi.sock[[:space:]]+unix" "$OPENVPN_DIR/server.conf" ||
+    echo "WARNING: server.conf does not use $MI_DIR/mi.sock. The healthcheck and openvpn-ui need this socket."
+
+# OpenVPN keeps the mode of existing files and would create these as root-only
+mkdir -p /var/log/openvpn
+for MI_LOG in openvpn.log openvpn-status.log; do
+    touch "/var/log/openvpn/$MI_LOG"
+    chgrp "${OPENVPN_MI_GID:-61194}" "/var/log/openvpn/$MI_LOG"
+    chmod 640 "/var/log/openvpn/$MI_LOG"
+done
+
 echo 'Start openvpn process...'
-/usr/sbin/openvpn --cd $OPENVPN_DIR --script-security 2 --config $OPENVPN_DIR/server.conf
+exec /usr/sbin/openvpn --cd $OPENVPN_DIR --script-security 2 --config $OPENVPN_DIR/server.conf
