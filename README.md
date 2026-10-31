@@ -139,7 +139,6 @@ services:
        ports:
           - "1194:1194/udp"   # openvpn UDP port
          # - "1194:1194/tcp"   # openvpn TCP port
-         # - "2080:2080/tcp"  # management port. uncomment if you would like to share it with the host
        environment:
            TRUST_SUB: "10.0.70.0/24"
            GUEST_SUB: "10.0.71.0/24"
@@ -153,11 +152,12 @@ services:
            - ./fw-rules.sh:/opt/app/fw-rules.sh
            - ./checkpsw.sh:/opt/app/checkpsw.sh
            - ./server.conf:/etc/openvpn/server.conf
+           - ./run:/etc/openvpn/run
        cap_add:
            - NET_ADMIN
        restart: always
        healthcheck:
-           test: ["CMD-SHELL", "echo '' > /dev/tcp/127.0.0.1/2080 2>/dev/null || exit 1"]
+           test: ["CMD-SHELL", "test -S /etc/openvpn/run/mi.sock && pgrep openvpn >/dev/null"]
            interval: 30s
            timeout: 5s
            retries: 3

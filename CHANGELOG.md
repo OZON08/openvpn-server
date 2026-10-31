@@ -1,5 +1,13 @@
 # Changelog
 
+## [v0.6.4]
+
+### Sicherheit
+
+- **Management-Interface läuft über einen Unix-Socket** (`server.conf`, `docker-entrypoint.sh`, `docker-compose.yml`, `docker-compose-no-ui.yml`)
+  Port 2080 entfällt. Der Socket liegt unter `/etc/openvpn/run/mi.sock`. Das Verzeichnis `run` gehört `root` und hat Modus `0700`, weil der Socket selbst für alle offen ist. Bestehende Configs mit Port 2080 werden beim Start umgestellt, sobald `./run:/etc/openvpn/run` gemountet ist. Der Healthcheck prüft jetzt Socket und Prozess.
+  > **Hinweis:** Benötigt eine aktuelle `openvpn-ui`, die den Socket verwendet, und die neue Volume-Zeile in der Compose-Datei.
+
 ## [v0.6.3]
 
 ### Sicherheit

@@ -93,5 +93,19 @@ iptables -t nat -L | grep MASQ
 echo 'IPT FWD Chains:'
 iptables -v -x -n -L | grep DROP 
 
+# Management socket: its mode is 0777, so only this root-owned directory restricts access
+MI_DIR=$OPENVPN_DIR/run
+mkdir -p "$MI_DIR"
+chown 0:0 "$MI_DIR" # the host directory can belong to any user
+chmod 700 "$MI_DIR"
+# Move existing configs off the old TCP port, once the directory is shared with the UI
+if grep -q " $MI_DIR " /proc/mounts && grep -qE '^management[[:space:]]+[^[:space:]]+[[:space:]]+2080' "$OPENVPN_DIR/server.conf"; then
+    MI_TMP=$(mktemp)
+    sed -E "s|^management[[:space:]]+[^[:space:]]+[[:space:]]+2080.*|management $MI_DIR/mi.sock unix|" "$OPENVPN_DIR/server.conf" > "$MI_TMP"
+    cat "$MI_TMP" > "$OPENVPN_DIR/server.conf" # in place, server.conf can be a single-file mount
+    rm -f "$MI_TMP"
+    echo 'Management interface moved to Unix socket.'
+fi
+
 echo 'Start openvpn process...'
 /usr/sbin/openvpn --cd $OPENVPN_DIR --script-security 2 --config $OPENVPN_DIR/server.conf
