@@ -1,6 +1,6 @@
 # Management-Interface über einen Unix-Socket
 
-Stand: 2026-10-31. Die Änderung ist auf dem Branch `management-unix-socket` committet. Der komplette Stack wurde mit beiden echten Images getestet.
+Stand: 2026-10-31. Die Änderung ist auf `main` und als `ozon08/openvpn-server:dev` veröffentlicht, noch nicht als `latest`. Der komplette Stack wurde mit beiden Images getestet, `openvpn-ui` dabei auf dem Stand vor ihrer letzten Änderung.
 
 ## Ziel
 
