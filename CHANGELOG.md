@@ -8,6 +8,11 @@
   Port 2080 entfällt. Der Socket liegt unter `/etc/openvpn/run/mi.sock`. Das Verzeichnis `run` gehört `root` mit GID `61194` (`OPENVPN_MI_GID`) und hat Modus `0750`, weil der Socket selbst für alle offen ist. Bestehende Configs mit Port 2080 werden beim Start umgestellt, sobald `./run:/etc/openvpn/run` gemountet ist. Der Healthcheck prüft jetzt Socket und Prozess.
   > **Hinweis:** Benötigt eine aktuelle `openvpn-ui`, die den Socket verwendet, und die neue Volume-Zeile in der Compose-Datei. Eine ältere `openvpn-ui` kann den Socket nicht nutzen und öffnet `run` bei ihrem Start für GID 1000, deshalb beide Images gemeinsam aktualisieren.
 
+### Geändert
+
+- **Dev-Image wie bei `openvpn-ui`** (`.github/workflows/docker-build-dev.yml`, `.github/workflows/docker-build.yml`)
+  Ein Push auf `main` baut nur noch `ozon08/openvpn-server:dev` für amd64. `latest` und die Versions-Tags entstehen nur noch aus einem Git-Tag `v*`. Der Tag `main` wird nicht mehr aktualisiert.
+
 ### Behoben
 
 - **OpenVPN läuft als PID 1** (`docker-entrypoint.sh`)

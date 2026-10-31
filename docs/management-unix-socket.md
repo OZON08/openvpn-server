@@ -18,6 +18,7 @@ Das Gegenstück liegt im Repo `openvpn-ui` unter `docs/management-unix-socket.md
 | `docker-entrypoint.sh` | Startet OpenVPN mit `exec` als PID 1. `openvpn.log` und `openvpn-status.log` erhalten vorab die Socket-Gruppe und Modus `0640`, damit die UI sie lesen kann |
 | `docker-compose.yml`, `docker-compose-no-ui.yml` | Neues Volume `./run:/etc/openvpn/run`, Healthcheck prüft Socket und Prozess, Port-Eintrag entfernt, `start_period` auf `7200s` |
 | `README.md`, `DOCKER_HUB.md` | Beispiele, Volumes und Sicherheitshinweise angepasst |
+| `.github/workflows/` | `docker-build-dev.yml` baut bei einem Push auf `main` den Tag `dev`. `docker-build.yml` baut `latest` nur noch aus einem Git-Tag `v*`. Alle Actions sind auf Commit-SHAs fixiert, weil sie das Docker-Hub-Token erhalten |
 | `.gitignore` | `run/` ergänzt |
 | `CHANGELOG.md` | Eintrag `v0.6.4` |
 

@@ -46,6 +46,13 @@ Admin credentials (`OPENVPN_ADMIN_USERNAME`, `OPENVPN_ADMIN_PASSWORD`) are store
 - TLS minimum version 1.3 for clients
 - Admin credentials stored in `.env`, excluded from Git
 
+## Image tags
+
+| Tag | Description |
+| --- | --- |
+| `latest`, `0.6.x` | Releases for amd64, arm64 and arm/v7, built from a Git tag |
+| `dev` | Current `main` branch for amd64, not for production |
+
 ## Ports
 
 | Port | Protocol | Description |
