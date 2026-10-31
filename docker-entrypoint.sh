@@ -120,5 +120,11 @@ for MI_LOG in openvpn.log openvpn-status.log; do
     chmod 640 "/var/log/openvpn/$MI_LOG"
 done
 
+# OpenVPN runs as nobody and reads these on every connection. Without access it keeps
+# accepting revoked certificates and ignores static client addresses, with only a log warning.
+chmod o+x "$OPENVPN_DIR/pki"
+[ ! -f "$OPENVPN_DIR/pki/crl.pem" ] || chmod o+r "$OPENVPN_DIR/pki/crl.pem"
+[ ! -d "$OPENVPN_DIR/staticclients" ] || chmod -R o+rX "$OPENVPN_DIR/staticclients"
+
 echo 'Start openvpn process...'
 exec /usr/sbin/openvpn --cd $OPENVPN_DIR --script-security 2 --config $OPENVPN_DIR/server.conf

@@ -17,6 +17,8 @@
 
 ### Behoben
 
+- **Gesperrte Zertifikate wurden bei `pki` mit Modus `0700` weiter akzeptiert** (`docker-entrypoint.sh`)
+  OpenVPN läuft als `nobody` und konnte `crl.pem` dann nicht neu lesen, im Log stand nur `Failed to stat CRL file`. Dasselbe galt für `staticclients`, statische Adressen wurden still ignoriert. Der Container gibt `nobody` beim Start nun genau diesen Zugriff, private Schlüssel bleiben geschützt.
 - **OpenVPN läuft als PID 1** (`docker-entrypoint.sh`)
   `docker stop` erreicht OpenVPN jetzt direkt, Clients erhalten beim Stoppen die Reset-Meldung vom Server.
 - **Logs für die UI lesbar** (`docker-entrypoint.sh`)

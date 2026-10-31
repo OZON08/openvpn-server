@@ -61,6 +61,8 @@ Der komplette Stack lief mit beiden echten Images, mit 2048-Bit-DH-Parametern un
 
 Mit `alpine:3.24` und OpenVPN 2.7.7 wurden wiederholt: Erststart mit neuer PKI, alle 20 Stack-Prüfungen, VPN-Clients mit 2.7 und 2.6, Speichern über die UI mit anschließendem `tls-crypt`-Client und ein Upgrade mit einer PKI aus dem 3.21-Image. Dabei lief `openvpn-ui` auf dem Stand `6cdc640`, die Client-Zertifikate entstanden direkt mit `easyrsa`, nicht über `genclient.sh`.
 
+Mit `pki` und `staticclients` auf Modus `0700` wird ein gesperrter Client im laufenden Betrieb abgewiesen, und die statische Adresse greift. `nobody` kann `ca.key` weiter nicht lesen und `pki` nicht auflisten.
+
 ## Nicht getestet
 
 - Die Neustart-Buttons, die `docker.sock` nutzen.
@@ -70,5 +72,7 @@ Mit `alpine:3.24` und OpenVPN 2.7.7 wurden wiederholt: Erststart mit neuer PKI, 
 
 ## Offen
 
-1. `tls-auth` und `tls-crypt` passen nicht zusammen: Speichert die UI die OpenVPN-Config, steht in `server.conf` `tls-crypt`. `genclient.sh` schreibt in `.ovpn`-Dateien aber `<tls-auth>`. Ein solcher Client scheitert dann mit `tls-crypt unwrap error`. Das kommt nicht von dieser Änderung und betrifft `openvpn-ui`.
-2. `start.sh` von `openvpn-ui` setzt die Gruppe der Logs auf GID 1000 und gibt ihr Schreibrecht. Bis das eingegrenzt ist, kann ein Host-Benutzer mit dieser GID sie lesen und ändern.
+1. `bin/genclient.sh`, `bin/revoke.sh` und `bin/rmcert.sh` laufen im Server-Image nicht, obwohl das `README.md` sie beschreibt. Sie lesen ihre Pfade aus `../openvpn-ui/conf/app.conf`, die es dort nicht gibt. Das kommt nicht von dieser Änderung.
+2. Das Sperren erneuerter Zertifikate wirkt nicht: `revoke.sh` löscht dann nur die Zeile aus `index.txt`, nichts landet in der CRL, und altes wie neues Zertifikat verbinden sich weiter. Das hat die Session von `openvpn-ui` dort getestet, `bin/revoke.sh` enthält dieselbe Logik. Das kommt nicht von dieser Änderung.
+3. `tls-auth` und `tls-crypt` passen nicht zusammen: Speichert die UI die OpenVPN-Config, steht in `server.conf` `tls-crypt`. `genclient.sh` schreibt in `.ovpn`-Dateien aber `<tls-auth>`. Ein solcher Client scheitert dann mit `tls-crypt unwrap error`. Das kommt nicht von dieser Änderung und betrifft `openvpn-ui`.
+4. `start.sh` von `openvpn-ui` setzt die Gruppe der Logs auf GID 1000 und gibt ihr Schreibrecht. Bis das eingegrenzt ist, kann ein Host-Benutzer mit dieser GID sie lesen und ändern.
