@@ -1,6 +1,6 @@
 # Management-Interface über einen Unix-Socket
 
-Stand: 2026-10-31. Die Änderung ist auf dem Branch `management-unix-socket` committet. Der Test des kompletten Stacks steht noch aus, siehe „Offen“.
+Stand: 2026-10-31. Die Änderung ist auf dem Branch `management-unix-socket` committet. Der komplette Stack wurde mit beiden echten Images getestet.
 
 ## Ziel
 
@@ -13,27 +13,28 @@ Das Gegenstück liegt im Repo `openvpn-ui` unter `docs/management-unix-socket.md
 | Datei | Änderung |
 |---|---|
 | `server.conf` | `management /etc/openvpn/run/mi.sock unix` |
-| `docker-entrypoint.sh` | Legt `run` mit `root:root` und Modus `0700` an und stellt alte Configs mit Port 2080 um |
+| `docker-entrypoint.sh` | Legt `run` mit Besitzer root, GID `61194` und Modus `0750` an und stellt alte Configs mit Port 2080 um |
+| `Dockerfile` | `LABEL version` auf `0.6.4` |
 | `docker-compose.yml`, `docker-compose-no-ui.yml` | Neues Volume `./run:/etc/openvpn/run`, Healthcheck prüft Socket und Prozess, Port-Eintrag entfernt |
-| `README.md` | Compose-Beispiel angepasst |
+| `README.md`, `DOCKER_HUB.md` | Beispiele, Volumes und Sicherheitshinweise angepasst |
 | `.gitignore` | `run/` ergänzt |
 | `CHANGELOG.md` | Eintrag `v0.6.4` |
 
 ## So ist der Zugriff beschränkt
 
-Der Socket hat den Modus `0777`, seine eigenen Rechte schützen also nichts. Den Zugriff begrenzt das Verzeichnis `run`, das der Container beim Start auf `root:root` mit Modus `0700` setzt. `chown` ist nötig, weil das Host-Verzeichnis einem beliebigen Benutzer gehören kann und dieser sonst Zugriff behielte.
+Der Socket hat den Modus `0777`, seine eigenen Rechte schützen also nichts. Den Zugriff begrenzt das Verzeichnis `run`, das der Container bei jedem Start auf Besitzer root, GID `61194` und Modus `0750` setzt. `chown` ist nötig, weil das Host-Verzeichnis einem beliebigen Benutzer gehören kann und dieser sonst Zugriff behielte.
 
-Der Prozess, der den Socket öffnet, muss deshalb als root laufen. Bei Rootless Docker ist root im Container der Benutzer, der Docker ausführt.
+Der Webprozess von `openvpn-ui` läuft als UID 1000 und erhält den Zugriff über die Gruppe `openvpn-mi` mit dieser GID. Eine eigene GID ist nötig, weil GID 1000 oft einem normalen Host-Benutzer gehört.
 
-**Ungeprüfter Verdacht:** Der Container von `openvpn-ui` startet zwar als root, `build/assets/start.sh` wechselt für den Webprozess aber mit `su-exec` zu UID 1000. Diese UID erhält laut dem Test unten `permission denied`. Die UI erreicht den Socket mit dem echten Image daher vermutlich nicht.
+Eine andere GID lässt sich mit `OPENVPN_MI_GID` setzen, und zwar auf beiden Services mit demselben Wert. Ein Host-Benutzer in dieser Gruppe kann OpenVPN steuern, die GID darf also niemand sonst erhalten.
 
 ## Umstellung bestehender Configs
 
-Der Container stellt eine Zeile `management <Adresse> 2080` beim Start auf den Socket um, wenn `./run:/etc/openvpn/run` gemountet ist. Ohne dieses Volume bleibt die Config auf TCP. `server.conf` wird dabei in derselben Datei geändert, weil sie als einzelne Datei gemountet ist und ein `sed -i` dort fehlschlagen würde.
+Der Container stellt eine Zeile `management <Adresse> 2080` beim Start auf den Socket um, wenn `./run:/etc/openvpn/run` gemountet ist. Ohne dieses Volume bleibt die Config auf TCP. Eine Config mit einem anderen Port bleibt ebenfalls auf TCP. Der Container schreibt dann eine Warnung ins Log, und sein Healthcheck schlägt fehl. `server.conf` wird dabei in derselben Datei geändert, weil sie als einzelne Datei gemountet ist und ein `sed -i` dort fehlschlagen würde.
 
 ## Rollout
 
-1. Images von `openvpn` und `openvpn-ui` gemeinsam aktualisieren. Die neue UI spricht nur noch mit dem Socket.
+1. Images von `openvpn` und `openvpn-ui` gemeinsam aktualisieren. Die neue UI spricht nur noch mit dem Socket. Eine ältere UI öffnet `run` bei ihrem Start für GID 1000 und damit für einen Host-Benutzer mit dieser GID.
 2. `./run:/etc/openvpn/run` beim Service `openvpn` ergänzen.
 3. Den neuen Healthcheck aus den Compose-Dateien übernehmen. Der alte prüft Port 2080 und würde fehlschlagen.
 
@@ -43,18 +44,22 @@ Der Container stellt eine Zeile `management <Adresse> 2080` beim Start auf den S
 
 ## Getestet
 
-Der Test lief mit OpenVPN 2.6 in Alpine 3.21, dem Startblock aus `docker-entrypoint.sh` und einem Client aus der Bibliothek in einem zweiten Container:
+Der komplette Stack lief mit beiden echten Images, mit 2048-Bit-DH-Parametern und ohne `docker.sock`:
 
-- root aus einem anderen Container verbindet sich, UID 1000 und UID 65534 erhalten `permission denied`.
-- Der normale Host-Benutzer hat keinen Zugriff auf `run`.
-- `SIGUSR1` und ein Container-Neustart lassen den Socket funktionieren.
-- Eine alte `server.conf` wird umgestellt und behält ihre Inode.
-- Der Healthcheck besteht, wenn OpenVPN läuft, und schlägt ohne den Prozess fehl.
+- Die UI läuft als `openvpn-ui` und zeigt die OpenVPN-Version, die sie über den Socket liest. Das gilt für beide Startreihenfolgen und nach dem Neustart jedes Containers.
+- `run` bleibt auf `0:61194` mit Modus `0750`. UID 1000 ohne die Gruppe, UID 65534 und der Host-Benutzer haben keinen Zugriff.
+- Eine alte `server.conf` wird umgestellt und behält ihre Inode. Eine Zeile mit Port `20800` bleibt unverändert.
+- Der Healthcheck besteht, wenn OpenVPN läuft.
+- Eine eigene GID über `.env` wirkt auf beiden Services.
+- Eine Config mit anderem TCP-Port erzeugt die Warnung im Log, ein alter Socket wird beim Start entfernt.
+- Eine Prüfung mit zuerst gestarteter UI lieferte einmal keine Version. In den übrigen kompletten Läufen und bei 10 weiteren Abrufen über 5 Neustarts in dieser Reihenfolge bestand sie, ohne Socket-Fehler im Log. Die Ursache des einzelnen Fehlschlags ist unbekannt.
 
-Das echte Image dieses Repos wurde dabei nicht gebaut.
+## Nicht getestet
+
+- Die Neustart-Buttons, die `docker.sock` nutzen.
+- Eine echte VPN-Client-Verbindung.
+- Rootless Docker.
 
 ## Offen
 
-1. Den kompletten Stack mit beiden echten Images testen. Dabei den Socket-Zugriff der UI mit UID 1000 klären, auch weil `start.sh` mit `chgrp -R` und `chmod -R g+w` das Verzeichnis `run` verändert.
-2. `LABEL version` im `Dockerfile` steht noch auf `0.6.3` und muss für v0.6.4 angehoben werden.
-3. Code-Review.
+Ein erster Start mit 4096-Bit-DH-Parametern kann auf langsamen Rechnern länger dauern als `start_period: 900s`. Der Server gilt dann als `unhealthy`, und `depends_on` verhindert den Start der UI. Das kommt nicht von dieser Änderung.

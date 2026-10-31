@@ -12,6 +12,12 @@ Fast Docker container with OpenVPN Server living inside.
 
 ## Important changes
 
+### Release `v0.6.4`
+
+#### Security
+
+* The management interface moved from TCP port 2080 to the Unix socket `/etc/openvpn/run/mi.sock`. Add `./run:/etc/openvpn/run` to the `openvpn` service and update `openvpn` and `openvpn-ui` together. An older `openvpn-ui` cannot use the socket and opens `run` to GID 1000 when it starts. See [docs/management-unix-socket.md](docs/management-unix-socket.md).
+
 ### Release `v0.6.3`
 
 #### Security
@@ -259,6 +265,7 @@ docker run --interactive --tty --rm \
   -v ./log:/var/log/openvpn \
   -v ./fw-rules.sh:/opt/app/fw-rules.sh \
   -v ./server.conf:/etc/openvpn/server.conf \
+  -v ./run:/etc/openvpn/run \
   --privileged ozon08/openvpn-server:latest
 ```
 
