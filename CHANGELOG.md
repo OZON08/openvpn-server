@@ -10,6 +10,8 @@
 
 ### Geändert
 
+- **Basis-Image `alpine:3.24`** (`Dockerfile`)
+  Damit steigen OpenVPN von 2.6.20 auf 2.7.7, easy-rsa von 3.2.1 auf 3.2.5 und OpenSSL von 3.3 auf 3.5. Bestehende PKIs und Clients mit OpenVPN 2.6 funktionieren im Test weiter.
 - **Dev-Image wie bei `openvpn-ui`** (`.github/workflows/docker-build-dev.yml`, `.github/workflows/docker-build.yml`)
   Ein Push auf `main` baut nur noch `ozon08/openvpn-server:dev` für amd64. `latest` und die Versions-Tags entstehen nur noch aus einem Git-Tag `v*`. Der Tag `main` wird nicht mehr aktualisiert.
 

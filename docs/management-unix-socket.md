@@ -59,10 +59,13 @@ Der komplette Stack lief mit beiden echten Images, mit 2048-Bit-DH-Parametern un
 - `docker stop` dauert 2,3 Sekunden mit Exit-Code 0, der Client erhält die Reset-Meldung vom Server.
 - Die UI liest `openvpn-status.log` als `openvpn-ui`, `status.log parse failed` tritt nicht mehr auf.
 
+Mit `alpine:3.24` und OpenVPN 2.7.7 wurden wiederholt: Erststart mit neuer PKI, alle 20 Stack-Prüfungen, VPN-Clients mit 2.7 und 2.6, Speichern über die UI mit anschließendem `tls-crypt`-Client und ein Upgrade mit einer PKI aus dem 3.21-Image. Dabei lief `openvpn-ui` auf dem Stand `6cdc640`, die Client-Zertifikate entstanden direkt mit `easyrsa`, nicht über `genclient.sh`.
+
 ## Nicht getestet
 
 - Die Neustart-Buttons, die `docker.sock` nutzen.
 - Rootless Docker.
+- Die Images für arm64 und arm/v7, die erst ein Release baut.
 - Ein erster Start mit 4096-Bit-DH-Parametern bis zum Ende. Auf dem Testrechner war er nach 44 Minuten bei hoher Last nicht fertig, deshalb ist `start_period` jetzt `7200s`. Ob das auf jeder Hardware reicht, ist offen.
 
 ## Offen
