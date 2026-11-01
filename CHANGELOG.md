@@ -26,6 +26,17 @@
 - **`start_period` auf `7200s`** (`docker-compose.yml`, `docker-compose-no-ui.yml`)
   Die DH-Erzeugung kann auf langsamen Rechnern länger als 900 Sekunden dauern. Die UI startete dann wegen `depends_on` nicht.
 
+### Dokumentation
+
+- **Hinweise aus der ersten Umstellung einer bestehenden Installation** (`README.md`, `docs/management-unix-socket.md`)
+  Ohne `privileged` ist `/proc/sys` schreibgeschützt. Ein eigenes `up`-Skript mit `sysctl -w` beendet OpenVPN deshalb beim Start. Dazu kommen Hinweise zu angehängten Containern, zum Admin-Passwort bei bestehender Datenbank und zu eigenen Zeilen in `server.conf`.
+- **Regeln für das Gäste-Netz** (`README.md`)
+  Die Standardregeln sperren `GUEST_SUB` nur für `HOME_SUB`. Das README beschreibt jetzt, wie sich Gäste auf Internet und DNS beschränken lassen.
+- **Beispiele ohne `privileged`** (`README.md`)
+  Compose- und `docker run`-Beispiel nutzen wie die Compose-Dateien `NET_ADMIN`, `/dev/net/tun` und `sysctls`.
+- **`.env.example` ergänzt**
+  `README.md` und `DOCKER_HUB.md` verweisen darauf, die Datei fehlte aber im Repo.
+
 ## [v0.6.3]
 
 ### Sicherheit

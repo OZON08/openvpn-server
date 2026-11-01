@@ -1,6 +1,6 @@
 # Management-Interface über einen Unix-Socket
 
-Stand: 2026-10-31. Die Änderung ist auf `main` und als `ozon08/openvpn-server:dev` veröffentlicht, noch nicht als `latest`. Der komplette Stack wurde mit beiden Images getestet, `openvpn-ui` dabei auf dem Stand vor ihrer letzten Änderung.
+Stand: 2026-11-01. Die Änderung ist auf `main` und als `ozon08/openvpn-server:dev` veröffentlicht, noch nicht als `latest`. Der komplette Stack wurde mit beiden Images getestet, und eine bestehende Installation läuft damit im Betrieb.
 
 ## Ziel
 
@@ -40,6 +40,20 @@ Der Container stellt eine Zeile `management <Adresse> 2080` beim Start auf den S
 2. `./run:/etc/openvpn/run` beim Service `openvpn` ergänzen.
 3. Den neuen Healthcheck aus den Compose-Dateien übernehmen. Der alte prüft Port 2080 und würde fehlschlagen.
 
+### Stolperstellen beim Umstieg
+
+Diese Punkte traten beim ersten Umstieg einer bestehenden Installation auf, die zuvor mit `privileged` lief:
+
+| Symptom | Ursache | Lösung |
+|---|---|---|
+| `openvpn` startet ständig neu, im `openvpn.log` steht `Failed running command (--up/--down)` | Ein eigenes `up`-Skript ruft `sysctl -w` auf, `/proc/sys` ist ohne `privileged` schreibgeschützt | Den Aufruf entfernen, `sysctls` in der Compose-Datei setzt den Wert |
+| `sysctl: error setting key` beim Containerstart | `sysctl -p` im Entrypoint, das Skript läuft danach weiter | Harmlos, keine Änderung nötig |
+| Angehängte Container melden `cannot join network namespace` | Container mit `network_mode: service:openvpn` starten nicht, solange `openvpn` neu startet | Erst `openvpn` reparieren, dann alle zusammen mit `--force-recreate` neu erstellen |
+| `docker logs` endet bei `Start openvpn process...` | Mit der Option `log` in `server.conf` schreibt OpenVPN nur noch in seine Logdatei | `log/openvpn.log` lesen |
+| Das alte Admin-Passwort gilt weiter | `openvpn-ui` liest `OPENVPN_ADMIN_PASSWORD` nur beim Anlegen des Kontos | Das Passwort zusätzlich in der UI ändern |
+
+Vor dem Umstieg sollte man prüfen, dass `getent group 61194` nichts ausgibt und eigene Skripte ausführbar sind. Beim Sichern sollten `pki`, `db` und `server.conf` dabei sein.
+
 ## Bekannte Einschränkung
 
 `SIGHUP` beendet OpenVPN, wenn `server.conf` den Modus `0600` hat, weil der Prozess als `nobody` läuft und die Datei nicht erneut lesen kann. Mit `restart: always` startet der Container neu. `openvpn-ui` setzt den Modus `0600` beim Speichern. Die Buttons der Oberfläche nutzen `SIGUSR1`, die Signal-API nimmt aber auch andere Signale an.
@@ -63,6 +77,13 @@ Mit `alpine:3.24` und OpenVPN 2.7.7 wurden wiederholt: Erststart mit neuer PKI, 
 
 Mit `pki` und `staticclients` auf Modus `0700` wird ein gesperrter Client im laufenden Betrieb abgewiesen, und die statische Adresse greift. `nobody` kann `ca.key` weiter nicht lesen und `pki` nicht auflisten.
 
+Am 2026-11-01 lief die Umstellung einer bestehenden Installation mit den veröffentlichten `dev`-Images, einer PKI von 2025 und ohne `privileged`:
+
+- `server.conf` und die Einstellung in der Datenbank der UI wurden automatisch auf den Socket umgestellt.
+- `openvpn` und `openvpn-ui` wurden `healthy`.
+- Ein bestehender Client verband sich mit `tls-crypt` über OpenVPN 2.7.7 und erhielt seine statische Adresse.
+- Die Logs lagen auf `root:61194` mit Modus `0640`.
+
 ## Nicht getestet
 
 - Die Neustart-Buttons, die `docker.sock` nutzen.
@@ -74,5 +95,10 @@ Mit `pki` und `staticclients` auf Modus `0700` wird ein gesperrter Client im lau
 
 1. `bin/genclient.sh`, `bin/revoke.sh` und `bin/rmcert.sh` laufen im Server-Image nicht, obwohl das `README.md` sie beschreibt. Sie lesen ihre Pfade aus `../openvpn-ui/conf/app.conf`, die es dort nicht gibt. Das kommt nicht von dieser Änderung.
 2. Das Sperren erneuerter Zertifikate wirkt nicht: `revoke.sh` löscht dann nur die Zeile aus `index.txt`, nichts landet in der CRL, und altes wie neues Zertifikat verbinden sich weiter. Das hat die Session von `openvpn-ui` dort getestet, `bin/revoke.sh` enthält dieselbe Logik. Das kommt nicht von dieser Änderung.
-3. `tls-auth` und `tls-crypt` passen nicht zusammen: Speichert die UI die OpenVPN-Config, steht in `server.conf` `tls-crypt`. `genclient.sh` schreibt in `.ovpn`-Dateien aber `<tls-auth>`. Ein solcher Client scheitert dann mit `tls-crypt unwrap error`. Das kommt nicht von dieser Änderung und betrifft `openvpn-ui`.
-4. `start.sh` von `openvpn-ui` setzt die Gruppe der Logs auf GID 1000 und gibt ihr Schreibrecht. Bis das eingegrenzt ist, kann ein Host-Benutzer mit dieser GID sie lesen und ändern.
+3. `sysctl -p` im Entrypoint meldet ohne `privileged` bei jedem Start einen Fehler, obwohl `sysctls` den Wert bereits setzt. Das ist harmlos, wirkt aber wie ein Problem.
+4. In `openvpn-ui` setzt `start.sh` `pki/private/*` auf Modus `0660` mit GID 1000, auch `ca.key`. Ein Host-Benutzer mit dieser GID kann die Schlüssel lesen und ändern. Abhilfe ist bis zu einer Änderung in `openvpn-ui`, das übergeordnete Host-Verzeichnis auf root mit Modus `0700` zu setzen, die Bind-Mounts funktionieren dann weiter. Der Punkt ist an die Session von `openvpn-ui` übergeben.
+
+## Erledigt
+
+- `tls-auth` und `tls-crypt`: Die Erkennung des Modus ist in `openvpn-ui` auf `main` (`5f39925`). Im Betrieb geprüft ist bisher nur ein bestehender `tls-crypt`-Client, kein neu erstellter.
+- Logs: Nach dem Start der UI liegen sie auf `root:61194` mit Modus `0640`, nicht mehr auf GID 1000.

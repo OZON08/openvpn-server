@@ -18,6 +18,12 @@ Fast Docker container with OpenVPN Server living inside.
 
 * The management interface moved from TCP port 2080 to the Unix socket `/etc/openvpn/run/mi.sock`. Add `./run:/etc/openvpn/run` to the `openvpn` service and update `openvpn` and `openvpn-ui` together. An older `openvpn-ui` cannot use the socket and opens `run` to GID 1000 when it starts. See [docs/management-unix-socket.md](docs/management-unix-socket.md).
 
+#### Upgrade notes
+
+* Without `privileged`, `/proc/sys` is read-only. A custom `up` script that calls `sysctl -w` now fails, and OpenVPN exits with a fatal error. Remove that call, because `sysctls` in the Compose file sets the value. See [Custom scripts](#custom-scripts).
+* The line `sysctl: error setting key 'net.ipv4.ip_forward': Read-only file system` from the container start is harmless.
+* Containers with `network_mode: service:openvpn` must be recreated together with `openvpn`.
+
 ### Release `v0.6.3`
 
 #### Security
@@ -130,6 +136,10 @@ OPENVPN_ADMIN_PASSWORD=your-secure-password
 ```
 
 > **Important:** Change the default password before exposing the UI to any network.
+>
+> **Note:** `openvpn-ui` reads `OPENVPN_ADMIN_PASSWORD` only when it creates the admin account. On an existing database, change the password in the UI as well.
+>
+> **Note:** `openvpn-ui` mounts this directory as `/etc/openvpn`, so a `.env` here is visible inside that container. If you mount a separate data directory instead, keep `.env` next to the Compose file and outside that directory.
 
 ### Docker-compose.yml
 
@@ -141,7 +151,6 @@ services:
        # To build your own image, uncomment the next line, comment "image:" and run "docker compose build"
        # build: .
        image: ozon08/openvpn-server:latest
-       privileged: true
        ports:
           - "1194:1194/udp"   # openvpn UDP port
          # - "1194:1194/tcp"   # openvpn TCP port
@@ -149,6 +158,7 @@ services:
            TRUST_SUB: "10.0.70.0/24"
            GUEST_SUB: "10.0.71.0/24"
            HOME_SUB: "192.168.88.0/24"
+           OPENVPN_MI_GID: "${OPENVPN_MI_GID:-61194}"
        volumes:
            - ./pki:/etc/openvpn/pki
            - ./clients:/etc/openvpn/clients
@@ -161,6 +171,10 @@ services:
            - ./run:/etc/openvpn/run
        cap_add:
            - NET_ADMIN
+       devices:
+           - /dev/net/tun:/dev/net/tun
+       sysctls:
+           net.ipv4.ip_forward: "1"
        restart: always
        healthcheck:
            test: ["CMD-SHELL", "test -S /etc/openvpn/run/mi.sock && pgrep openvpn >/dev/null"]
@@ -175,6 +189,7 @@ services:
        environment:
            - OPENVPN_ADMIN_USERNAME=${OPENVPN_ADMIN_USERNAME}
            - OPENVPN_ADMIN_PASSWORD=${OPENVPN_ADMIN_PASSWORD}
+           - OPENVPN_MI_GID=${OPENVPN_MI_GID:-61194}
        ports:
            - "8080:8080/tcp"
        volumes:
@@ -221,6 +236,29 @@ iptables -A FORWARD -s 10.0.70.88 -d 10.0.70.77 -j DROP
 iptables -A FORWARD -d 10.0.70.77 -s 10.0.70.88 -j DROP
 ```
 
+#### Restrict the guest subnet
+
+The default rules block `GUEST_SUB` only from `HOME_SUB`. Guests can still reach `TRUST_SUB`, the Docker network, and every service in the network namespace of the `openvpn` container, including containers with `network_mode: service:openvpn`. To allow only internet access and DNS on the server, add this to `fw-rules.sh`:
+
+```shell
+iptables -I FORWARD -s "$GUEST_SUB" -d 10.0.0.0/8 -j DROP
+iptables -I FORWARD -s "$GUEST_SUB" -d 172.16.0.0/12 -j DROP
+iptables -A INPUT -s "$GUEST_SUB" -p udp --dport 53 -j ACCEPT
+iptables -A INPUT -s "$GUEST_SUB" -p tcp --dport 53 -j ACCEPT
+iptables -A INPUT -s "$GUEST_SUB" -j DROP
+```
+
+These rules match the source address. They do not apply if a gateway client translates guest addresses with NAT before they reach the server. They also drop replies from guests to connections opened by trusted clients. The rules load in the image, but their effect on real guest traffic has not been tested.
+
+#### Custom scripts
+
+Scripts run with the rights of the container, not of the host:
+
+* Without `privileged`, `/proc/sys` is read-only. Set kernel values with `sysctls` in the Compose file instead of `sysctl -w`.
+* OpenVPN exits if an `up` script returns an error. Only the exit status of the last command counts, so a failed `ip route add` earlier in the script does not stop the server.
+* `fw-rules.sh` runs once at container start. Running it again by hand adds its rules a second time.
+* Saving the configuration in `openvpn-ui` rewrites `server.conf` from its stored values. Add your own lines, such as `up` or `client-disconnect`, as custom options in the UI so that they are kept.
+
 <img src="https://github.com/d3vilh/raspberry-gateway/raw/master/images/OVPN_VLANs.png" alt="OpenVPN Subnets" width="700" border="1" />
 
 Check the attached `docker-compose-no-ui.yml` file to run openvpn-server without the [OpenVPN UI](https://github.com/ozon08/openvpn-ui) container.
@@ -254,6 +292,8 @@ You can update all these parameters later with OpenVPN UI on `Configuration > Ea
 docker run --interactive --tty --rm \
   --name=openvpn \
   --cap-add=NET_ADMIN \
+  --device=/dev/net/tun \
+  --sysctl net.ipv4.ip_forward=1 \
   -p 1194:1194/udp \
   -e TRUST_SUB=10.0.70.0/24 \
   -e GUEST_SUB=10.0.71.0/24 \
@@ -266,7 +306,7 @@ docker run --interactive --tty --rm \
   -v ./fw-rules.sh:/opt/app/fw-rules.sh \
   -v ./server.conf:/etc/openvpn/server.conf \
   -v ./run:/etc/openvpn/run \
-  --privileged ozon08/openvpn-server:latest
+  ozon08/openvpn-server:latest
 ```
 
 ### Run the OpenVPN-UI image
