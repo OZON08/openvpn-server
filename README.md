@@ -22,7 +22,9 @@ Fast Docker container with OpenVPN Server living inside.
 
 * Without `privileged`, `/proc/sys` is read-only. A custom `up` script that calls `sysctl -w` now fails, and OpenVPN exits with a fatal error. Remove that call, because `sysctls` in the Compose file sets the value. See [Custom scripts](#custom-scripts).
 * The line `sysctl: error setting key 'net.ipv4.ip_forward': Read-only file system` from the container start is harmless.
-* Containers with `network_mode: service:openvpn` must be recreated together with `openvpn`.
+* Containers with `network_mode: service:openvpn` must be recreated together with `openvpn`. They also lose their network when the restart button of `openvpn-ui` restarts `openvpn`: they keep running with only `lo` until you restart them.
+* A current `openvpn-ui` mounts only the paths it manages and needs no `docker.sock`. Its restart buttons rely on `restart: always` on both services. Replace `./:/etc/openvpn` as in the example below; `server.conf` must exist before the first start.
+* The web user of `openvpn-ui` now uses UID and GID `61195`. Keep them free on the host and do not set `OPENVPN_MI_GID=61195`. The host user with UID 1000 loses direct access to `pki`, `clients`, `config`, `staticclients` and `db`.
 
 ### Release `v0.6.3`
 
@@ -139,7 +141,7 @@ OPENVPN_ADMIN_PASSWORD=your-secure-password
 >
 > **Note:** `openvpn-ui` reads `OPENVPN_ADMIN_PASSWORD` only when it creates the admin account. On an existing database, change the password in the UI as well.
 >
-> **Note:** `openvpn-ui` mounts this directory as `/etc/openvpn`, so a `.env` here is visible inside that container. If you mount a separate data directory instead, keep `.env` next to the Compose file and outside that directory.
+> **Note:** With the mounts in the example below, `openvpn-ui` cannot see `.env`. If you still mount the whole directory as `/etc/openvpn`, a `.env` in it is visible inside that container, and the log page cannot read the log because `/var/log/openvpn` is missing.
 
 ### Docker-compose.yml
 
@@ -193,10 +195,16 @@ services:
        ports:
            - "8080:8080/tcp"
        volumes:
-           - ./:/etc/openvpn
+           - ./server.conf:/etc/openvpn/server.conf
+           - ./config:/etc/openvpn/config
+           - ./clients:/etc/openvpn/clients
+           - ./staticclients:/etc/openvpn/staticclients
+           - ./pki:/etc/openvpn/pki
+           - ./run:/etc/openvpn/run
+           - ./log:/etc/openvpn/log:ro
+           - ./log:/var/log/openvpn:ro
            - ./db:/opt/openvpn-ui/db
            - ./pki:/usr/share/easy-rsa/pki
-           - /var/run/docker.sock:/var/run/docker.sock:ro
        restart: always
        healthcheck:
            test: ["CMD", "wget", "-qO/dev/null", "http://localhost:8080"]
@@ -257,7 +265,7 @@ Scripts run with the rights of the container, not of the host:
 * Without `privileged`, `/proc/sys` is read-only. Set kernel values with `sysctls` in the Compose file instead of `sysctl -w`.
 * OpenVPN exits if an `up` script returns an error. Only the exit status of the last command counts, so a failed `ip route add` earlier in the script does not stop the server.
 * `fw-rules.sh` runs once at container start. Running it again by hand adds its rules a second time.
-* Saving the configuration in `openvpn-ui` rewrites `server.conf` from its stored values. Add your own lines, such as `up` or `client-disconnect`, as custom options in the UI so that they are kept.
+* A current `openvpn-ui` keeps lines you added to `server.conf` by hand, such as `up` or `client-disconnect`, when you save its form. Older versions rewrite the file from their stored values and lose them, so back up the file before updating from one.
 
 <img src="https://github.com/d3vilh/raspberry-gateway/raw/master/images/OVPN_VLANs.png" alt="OpenVPN Subnets" width="700" border="1" />
 
@@ -313,10 +321,17 @@ docker run --interactive --tty --rm \
 
 ```shell
 docker run \
-  -v /home/pi/openvpn-server:/etc/openvpn \
-  -v /home/pi/openvpn-server/db:/opt/openvpn-ui/db \
-  -v /home/pi/openvpn-server/pki:/usr/share/easy-rsa/pki \
-  -v /var/run/docker.sock:/var/run/docker.sock:ro \
+  -v ./server.conf:/etc/openvpn/server.conf \
+  -v ./config:/etc/openvpn/config \
+  -v ./clients:/etc/openvpn/clients \
+  -v ./staticclients:/etc/openvpn/staticclients \
+  -v ./pki:/etc/openvpn/pki \
+  -v ./run:/etc/openvpn/run \
+  -v ./log:/etc/openvpn/log:ro \
+  -v ./log:/var/log/openvpn:ro \
+  -v ./db:/opt/openvpn-ui/db \
+  -v ./pki:/usr/share/easy-rsa/pki \
+  --restart always \
   -e OPENVPN_ADMIN_USERNAME="${OPENVPN_ADMIN_USERNAME}" \
   -e OPENVPN_ADMIN_PASSWORD="${OPENVPN_ADMIN_PASSWORD}" \
   -p 8080:8080/tcp \

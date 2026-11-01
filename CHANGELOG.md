@@ -37,6 +37,11 @@
 - **`.env.example` ergänzt**
   `README.md` und `DOCKER_HUB.md` verweisen darauf, die Datei fehlte aber im Repo.
 
+### Sicherheit, Compose
+
+- **`openvpn-ui` sieht nur noch, was sie verwaltet** (`docker-compose.yml`, `README.md`)
+  `./:/etc/openvpn` und `docker.sock` entfallen, die UI sieht `.env` und `fw-rules.sh` dadurch nicht mehr. Das braucht ein aktuelles `openvpn-ui`-Image, das `restart: always` für seine Neustart-Buttons nutzt und als UID und GID `61195` läuft.
+
 ## [v0.6.3]
 
 ### Sicherheit

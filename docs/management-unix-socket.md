@@ -26,7 +26,7 @@ Das Gegenstück liegt im Repo `openvpn-ui` unter `docs/management-unix-socket.md
 
 Der Socket hat den Modus `0777`, seine eigenen Rechte schützen also nichts. Den Zugriff begrenzt das Verzeichnis `run`, das der Container bei jedem Start auf Besitzer root, GID `61194` und Modus `0750` setzt. `chown` ist nötig, weil das Host-Verzeichnis einem beliebigen Benutzer gehören kann und dieser sonst Zugriff behielte.
 
-Der Webprozess von `openvpn-ui` läuft als UID 1000 und erhält den Zugriff über die Gruppe `openvpn-mi` mit dieser GID. Eine eigene GID ist nötig, weil GID 1000 oft einem normalen Host-Benutzer gehört.
+Der Webprozess von `openvpn-ui` läuft als UID und GID `61195` und erhält den Zugriff über die Gruppe `openvpn-mi` mit dieser GID. Eine eigene GID ist nötig, weil GID 1000 oft einem normalen Host-Benutzer gehört.
 
 Eine andere GID lässt sich mit `OPENVPN_MI_GID` setzen, und zwar auf beiden Services mit demselben Wert. Ein Host-Benutzer in dieser Gruppe kann OpenVPN steuern, die GID darf also niemand sonst erhalten.
 
@@ -39,6 +39,9 @@ Der Container stellt eine Zeile `management <Adresse> 2080` beim Start auf den S
 1. Images von `openvpn` und `openvpn-ui` gemeinsam aktualisieren. Die neue UI spricht nur noch mit dem Socket. Eine ältere UI öffnet `run` bei ihrem Start für GID 1000 und damit für einen Host-Benutzer mit dieser GID.
 2. `./run:/etc/openvpn/run` beim Service `openvpn` ergänzen.
 3. Den neuen Healthcheck aus den Compose-Dateien übernehmen. Der alte prüft Port 2080 und würde fehlschlagen.
+4. Bei `openvpn-ui` `./:/etc/openvpn` und `docker.sock` durch die Einzel-Mounts aus `docker-compose.yml` ersetzen. `restart: always` muss auf beiden Services bleiben, die Neustart-Buttons brauchen es. UID und GID `61195` müssen auf dem Host frei sein, `OPENVPN_MI_GID=61195` lehnt die UI beim Start ab.
+
+Der Neustart-Button beendet OpenVPN über den Socket. Container mit `network_mode: service:openvpn` laufen danach weiter, haben aber nur noch `lo` und brauchen einen eigenen Neustart.
 
 ### Stolperstellen beim Umstieg
 
@@ -84,9 +87,18 @@ Am 2026-11-01 lief die Umstellung einer bestehenden Installation mit den veröff
 - Ein bestehender Client verband sich mit `tls-crypt` über OpenVPN 2.7.7 und erhielt seine statische Adresse.
 - Die Logs lagen auf `root:61194` mit Modus `0640`.
 
+Danach lief die `docker-compose.yml` aus dem Repo mit den Einzel-Mounts und den veröffentlichten `dev`-Images, `openvpn-ui` auf dem Stand `43543c7`:
+
+- Beide Container wurden `healthy`, die UI läuft als UID `61195` in der Gruppe `61194` und liest die OpenVPN-Version über den Socket.
+- Die UI sieht weder `.env` noch `fw-rules.sh`, und `docker.sock` fehlt.
+- `ca.key` liegt auf `0:61195` mit Modus `0640`. `nobody` kann die Datei nicht lesen, `crl.pem` aber schon.
+- Das UI-Log enthält keinen Passwort-Hash und keine Debug-Zeilen.
+- Ein Client verbindet sich, erhält seine statische Adresse und wird nach dem Sperren im laufenden Betrieb abgewiesen.
+
+Der Host-Benutzer kann danach nicht mehr direkt in `staticclients` schreiben, das geht nur noch über die UI, im Container oder mit `sudo`.
+
 ## Nicht getestet
 
-- Die Neustart-Buttons, die `docker.sock` nutzen.
 - Rootless Docker.
 - Die Images für arm64 und arm/v7, die erst ein Release baut.
 - Ein erster Start mit 4096-Bit-DH-Parametern bis zum Ende. Auf dem Testrechner war er nach 44 Minuten bei hoher Last nicht fertig, deshalb ist `start_period` jetzt `7200s`. Ob das auf jeder Hardware reicht, ist offen.
@@ -96,9 +108,11 @@ Am 2026-11-01 lief die Umstellung einer bestehenden Installation mit den veröff
 1. `bin/genclient.sh`, `bin/revoke.sh` und `bin/rmcert.sh` laufen im Server-Image nicht, obwohl das `README.md` sie beschreibt. Sie lesen ihre Pfade aus `../openvpn-ui/conf/app.conf`, die es dort nicht gibt. Das kommt nicht von dieser Änderung.
 2. Das Sperren erneuerter Zertifikate wirkt nicht: `revoke.sh` löscht dann nur die Zeile aus `index.txt`, nichts landet in der CRL, und altes wie neues Zertifikat verbinden sich weiter. Das hat die Session von `openvpn-ui` dort getestet, `bin/revoke.sh` enthält dieselbe Logik. Das kommt nicht von dieser Änderung.
 3. `sysctl -p` im Entrypoint meldet ohne `privileged` bei jedem Start einen Fehler, obwohl `sysctls` den Wert bereits setzt. Das ist harmlos, wirkt aber wie ein Problem.
-4. In `openvpn-ui` setzt `start.sh` `pki/private/*` auf Modus `0660` mit GID 1000, auch `ca.key`. Ein Host-Benutzer mit dieser GID kann die Schlüssel lesen und ändern. Abhilfe ist bis zu einer Änderung in `openvpn-ui`, das übergeordnete Host-Verzeichnis auf root mit Modus `0700` zu setzen, die Bind-Mounts funktionieren dann weiter. Der Punkt ist an die Session von `openvpn-ui` übergeben.
 
 ## Erledigt
+
+- Schlüsselrechte: In einem aktuellen `openvpn-ui` liegt `ca.key` auf `0:61195` mit Modus `0640`. Der Webprozess kann die Datei lesen, aber nicht ändern, und die GID 1000 hat keinen Zugriff mehr.
+- Neustart-Buttons: Sie brauchen `docker.sock` nicht mehr. Die Session von `openvpn-ui` hat sie mit einem angehängten Container getestet.
 
 - `tls-auth` und `tls-crypt`: Die Erkennung des Modus ist in `openvpn-ui` auf `main` (`5f39925`). Im Betrieb geprüft ist bisher nur ein bestehender `tls-crypt`-Client, kein neu erstellter.
 - Logs: Nach dem Start der UI liegen sie auf `root:61194` mit Modus `0640`, nicht mehr auf GID 1000.
